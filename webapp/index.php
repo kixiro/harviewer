@@ -8,6 +8,16 @@
     <div id="content" version="@VERSION@"></div>
     <!--[if IE]><script type="text/javascript" src="scripts/excanvas/excanvas.js"></script><![endif]-->
     <script src="scripts/jquery.js"></script>
+
+    <script src="scripts/jszip/jszip.js"></script>
+    <script src="scripts/jszip/jszip-utils.js"></script>
+    <!--
+    Mandatory in IE 6, 7, 8 and 9.
+    -->
+    <!--[if IE]>
+    <script src="scripts/jszip/jszip-utils-ie.js"></script>
+    <![endif]-->
+
     <script data-main="scripts/harViewer" src="scripts/require.js"></script>
     <link rel="stylesheet" href="css/harViewer.css" type="text/css"/>
     <?php include("ga.php") ?>

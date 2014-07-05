@@ -370,12 +370,67 @@ HarModel.Loader =
         Cookies.setCookie("stats", true);
     },
 
+    loadLocalZippedArchive: function(filePath, callback, errorCallback)
+    {
+        function _errorCallback(statusText, ioArgs)
+        {
+            errorCallback({
+                // compatibility with jQuery error reporting
+                statusText: statusText
+            }, ioArgs);
+        }
+
+        var hasJSZipUtils = ("undefined" !== typeof JSZipUtils);
+
+        if (!hasJSZipUtils)
+        {
+            // The other errbacks are fired async, so keep consistent.
+            setTimeout(function() {
+                _errorCallback("zhar support not enabled");
+            }, 1);
+            return true;
+        }
+
+        JSZipUtils.getBinaryContent(filePath, function(err, data)
+        {
+            if (err)
+            {
+                _errorCallback("" + err, err);
+            }
+            else
+            {
+                var zip = new JSZip(data);
+                // find *.har in the zhar
+                var hars = zip.file(/\.har$/);
+                if (hars.length == 0)
+                {
+                    _errorCallback("zhar [" + filePath + "] has no .har files in it");
+                }
+                else
+                {
+                    // loads the first har in the zhar by default.
+                    var text = hars[0].asText();
+                    callback(text);
+                }
+            }
+        });
+
+        return true;
+    },
+
     loadLocalArchive: function(filePath, callback, errorCallback)
     {
+        var isZhar = !!filePath.match(/\.zhar/);
+        if (isZhar)
+        {
+            return this.loadLocalZippedArchive(filePath, callback, errorCallback);
+        }
+
         // Execute XHR to get a local file (the same domain).
         $.ajax({
             url: filePath,
             context: this,
+            dataType: "json",
 
             success: function(response)
             {
