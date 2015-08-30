@@ -45,7 +45,7 @@
  * <div class="har" data-har="/my.har" validate="false"></div>
  * - Do not validate the loaded HAR file.
 */
-window.harInitialize = function()
+function harInitialize()
 {
     var script = document.getElementById("har");
     var index = script.src.lastIndexOf("/");
@@ -66,7 +66,20 @@ window.harInitialize = function()
         var expand = element.getAttribute("expand");
         var validate = element.getAttribute("validate");
 
-        var args = "?" + (path.indexOf("http:") == 0 ? "inputUrl" : "path") + "=" + encodeURIComponent(path);
+        var args = "?";
+        if (path.indexOf("postMessage:") === 0)
+        {
+            args += "postMessage=" + encodeURIComponent(path);
+        }
+        else if (path.indexOf("http:") === 0)
+        {
+            args += "inputUrl=" + encodeURIComponent(path);
+        }
+        else
+        {
+             args += "path=" + encodeURIComponent(path);
+        }
+
         if (expand != "false")
             args += "&expand=" + (expand ? expand : "true");
 
@@ -136,11 +149,58 @@ function addEventListener(object, name, handler, direction)
         object.addEventListener(name, handler, direction);
     else
         object.attachEvent("on"+name, handler);
-};
+}
+
+function initPostMessage(evt) {
+    // We would prefer to use postMessage with objects, but some browsers (e.g. IE9) only support
+    // postMessage with strings.
+    // Therefore we check the typeof data and if it's a string we assume we're running on a
+    // browser that does not support object messages, and behave accordingly.
+    var postMessageSupportsObjects = ("string" !== typeof evt.data);
+    var data = postMessageSupportsObjects ? evt.data : JSON.parse(evt.data);
+
+    var id = data.id;
+    var type = data.type;
+
+    return {
+        id: id,
+
+        type: type,
+
+        isRequestForHar: function(_id) {
+            return (type === "HARViewer.requestHars") && (id === _id);
+        },
+
+        createMessage: function(type, har) {
+            var message = { type: type, id: id };
+            if (har) message.har = har;
+            if (!postMessageSupportsObjects) {
+                message = JSON.stringify(message);
+            }
+            return message;
+        },
+
+        sendHar: function(har) {
+            var message = this.createMessage("HARViewer.har", har);
+            evt.source.postMessage(message, evt.origin);
+        },
+
+        sendDone: function() {
+            var message = this.createMessage("HARViewer.done");
+            evt.source.postMessage(message, evt.origin);
+        }
+    };
+}
 
 harInitialize();
 
 addEventListener(window, "load", harInitialize, false);
+
+window.harInitialize = harInitialize;
+window.HARViewer = {
+    initialize: harInitialize,
+    initPostMessage: initPostMessage
+};
 
 // ********************************************************************************************* //
 })();

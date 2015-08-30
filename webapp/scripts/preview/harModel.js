@@ -12,6 +12,15 @@ define("preview/harModel", [
 
 function(Lib, JSONSchema, Ref, HarSchema, Cookies, Trace, Strings) {
 
+// https://github.com/Modernizr/Modernizr/pull/1250/
+var postMessageSupportsStructuredClones = (function() {
+    var supported = true;
+    try {
+      window.postMessage({ toString: function () { supported = false; } }, '*');
+    } catch (e) {}
+    return supported;
+}());
+
 //*************************************************************************************************
 // Statistics
 
@@ -335,18 +344,21 @@ HarModel.Loader =
         var paths = Lib.getURLParameters("path");
         var callbackName = Lib.getURLParameter("callback");
         var inputUrls = Lib.getURLParameters("inputUrl").concat(Lib.getHashParameters("inputUrl"));
+        var postMessageId = Lib.getURLParameter("postMessage");
 
         //for (var p in inputUrls)
         //    inputUrls[p] = inputUrls[p].replace(/%/g,'%25');
 
         var urls = [];
-        for (var p in paths)
-            urls.push(baseUrl ? baseUrl + paths[p] : paths[p]);
+        paths.forEach(function(path) {
+            urls.push(baseUrl ? baseUrl + path : path);
+        });
 
         // Load input data (using JSONP) from remote location.
         // http://domain/har/viewer?inputUrl=<remote-file-url>&callback=<name-of-the-callback>
-        for (var p in inputUrls)
-            urls.push(inputUrls[p]);
+        inputUrls.forEach(function(inputUrl) {
+            urls.push(inputUrl);
+        });
 
         if ((baseUrl || inputUrls.length > 0) && urls.length > 0)
             return this.loadRemoteArchive(urls, callbackName, callback, errorCallback);
@@ -356,6 +368,11 @@ HarModel.Loader =
         var filePath = Lib.getURLParameter("path");
         if (filePath)
             return this.loadLocalArchive(filePath, callback, errorCallback);
+
+        if (postMessageId && postMessageId.indexOf("postMessage:") === 0) {
+            postMessageId = postMessageId.substring("postMessage:".length);
+            return this.postMessageArchive(postMessageId, callback, errorCallback);
+        }
     },
 
     loadExample: function(path, callback)
@@ -367,6 +384,33 @@ HarModel.Loader =
         // Show timeline and stats by default if an example is displayed.
         Cookies.setCookie("timeline", true);
         Cookies.setCookie("stats", true);
+    },
+
+    postMessageArchive: function(postMessageId, callback, errorCallback)
+    {
+        var messageListener = function(evt) {
+            var origin = evt.origin;
+
+            // Turn evt.data into an object if necessary (for browsers not supporting postMessage
+            // structured clones).
+            var data = ("string" === typeof evt.data) ? JSON.parse(evt.data) : evt.data;
+
+            if (postMessageId !== data.id) {
+                throw new Error("HARViewer postMessage with unexpected id=" + data.id);
+            }
+
+            if ("HARViewer.har" === data.type) {
+                callback(data.har);
+            } else if ("HARViewer.done" === data.type) {
+                window.removeEventListener("message", messageListener, false);
+            }
+        };
+        window.addEventListener("message", messageListener, false);
+
+        var message = { type: "HARViewer.requestHars", id: postMessageId };
+        window.parent.postMessage(postMessageSupportsStructuredClones ? message : JSON.stringify(message), "*");
+
+        return true;
     },
 
     loadLocalArchive: function(filePath, callback, errorCallback)
