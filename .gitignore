@@ -60,3 +60,10 @@
 
 # Test results in JUnit format.
 /report.xml
+
+
+#--------------------------------------------------
+# Deployment
+
+# The folder where the gh-pages site is built.
+/gh-pages/

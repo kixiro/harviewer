@@ -4,9 +4,12 @@
   "description": "The purpose of this online tool is to visualize HTTP Archive (HAR) log files created by HTTP tracking tools. These files contain log of HTTP client/server conversation and can be used for an additional analysis of e.g. page load performance.",
   "devDependencies": {
     "intern": "~3.2.3",
-    "jsdoc": "~3.4.0"
+    "jsdoc": "~3.4.0",
+    "sanitize-filename": "^1.6.0",
+    "shelljs": "^0.7.0"
   },
   "scripts": {
-    "test": "intern-runner config=tests/intern"
+    "test": "intern-runner config=tests/intern",
+    "deploy": "node deploy.js"
   }
 }
