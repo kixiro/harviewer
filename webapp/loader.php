@@ -56,31 +56,40 @@ function getURLParameter(name)
     }
     return null;
 }
+
 var content = document.getElementById("content");
 var serviceName = getURLParameter("service");
 var path = getURLParameter("path");
 var expand = getURLParameter("expand");
+
+// Give the caller a choice of using php or html version of files.
+var ext = getURLParameter("ext");
+if (["php", "html"].indexOf(ext) < 0) {
+    ext = "php";
+}
+
 function onPageLoad()
 {
     var height = 0;
     if (!window.innerHeight) { //IE
-        if (!(document.documentElement.clientHeight == 0)) //strict mode 
+        if (!(document.documentElement.clientHeight == 0)) //strict mode
             height = document.documentElement.clientHeight;
-        else //quirks mode 
+        else //quirks mode
             height = document.body.clientHeight;
-    } else //w3c 
+    } else //w3c
         height = window.innerHeight;
 
     content.style.height = height + "px";
 
     var fullPreview = document.getElementById("fullPreview");
-    var fullLink = "index.php?path=" + getURLParameter("path");
+    var fullLink = "index." + ext + "?path=" + getURLParameter("path");
     fullPreview.setAttribute("href", fullLink);
 }
+
 function onHARLoad()
 {
     content.style.display = "none";
-    var url = serviceName + ".php?path=" + path + "&expand=" + (expand ? "true" : "false");
+    var url = serviceName + "." + ext + "?path=" + path + "&expand=" + (expand ? "true" : "false");
     location.href = url;
 }
 </script>

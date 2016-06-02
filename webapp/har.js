@@ -66,6 +66,12 @@ window.harInitialize = function()
         var expand = element.getAttribute("expand");
         var validate = element.getAttribute("validate");
 
+        // Give the caller a choice of using php or html version of files.
+        var ext = element.getAttribute("data-ext");
+        if (["php", "html"].indexOf(ext) < 0) {
+            ext = "php";
+        }
+
         var args = "?" + (path.indexOf("http:") == 0 ? "inputUrl" : "path") + "=" + encodeURIComponent(path);
         if (expand != "false")
             args += "&expand=" + (expand ? expand : "true");
@@ -81,7 +87,7 @@ window.harInitialize = function()
         iframe.setAttribute("frameborder", "0");
         iframe.setAttribute("width", width ? width : "100%");
         iframe.setAttribute("height", height ? height : "150px");
-        iframe.setAttribute("src", baseUrl + "preview.php" + args);
+        iframe.setAttribute("src", baseUrl + "preview." + ext + args);
         element.appendChild(iframe);
 
         removeHarClass(element);
