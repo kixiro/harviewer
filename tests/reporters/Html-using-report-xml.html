@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta charset="utf-8">
+		<title>Html Report</title>
+		<style>${HTML_HTML_REPORTER_CSS}</style>
+		<script src="${HTML_LOADER_URL}"></script>
+		<script>${HTML_HTML_REPORTER}</script>
+		<script>var totalTestDuration = ${HTML_TOTAL_TEST_DURATION};</script>
+		<script>
+		// 'HtmlReporter' is the hard-coded MID given to the module inlined as
+		// HTML2_HTML_REPORTER in the above script tag.
+		require(['HtmlReporter', 'dojo/request', 'dojo/io-query', 'dojo/domReady!'], function(HtmlReporter, request, ioQuery) {
+			function processTest(test) {
+				htmlReporter.testEnd(test);
+			}
+			function processSuite(suite) {
+				htmlReporter.suiteStart(suite);
+				suite.tests.forEach(function(suiteOrTest) {
+					// assume suiteOrTest has no parent, unless another value is present.
+					if ('undefined' === typeof suiteOrTest.parent) {
+						suiteOrTest.parent = true;
+					}
+					if (suiteOrTest.tests) {
+						processSuite(suiteOrTest);
+					} else {
+						processTest(suiteOrTest);
+					}
+				});
+				htmlReporter.suiteEnd(suite);
+			}
+			function convertErrorOrFailure(errorOrFailure) {
+				return {
+					message: errorOrFailure.getAttribute('message'),
+					type: errorOrFailure.getAttribute('type')
+				};
+			}
+			function convertTestNode(node, parent) {
+				var errors = children(node, 'error');
+				var failures = children(node, 'failure');
+				var error = null;
+				if (errors && errors.length > 0) {
+					error = convertErrorOrFailure(errors[0]);
+				}
+				if (failures && failures.length > 0) {
+					error = convertErrorOrFailure(failures[0]);
+				}
+				return {
+					id: (parent ? parent.id : '') + node.getAttribute('name'),
+					name: node.getAttribute('name'),
+					timeElapsed: parseFloat(node.getAttribute('time')) * 1000,
+					status: parseInt(node.getAttribute('status')),
+					error: error
+				};
+			}
+			function convertSuiteChildNodes(nodes, parent) {
+				var tests = [];
+				for (var i = 0; i < nodes.length; i++) {
+					var child = nodes[i];
+					if ('testsuite' === child.tagName) {
+						tests.push(convertSuiteNode(child, parent));
+					} else {
+						tests.push(convertTestNode(child, parent));
+					}
+				}
+				return tests;
+			}
+			function convertSuiteNode(node, parent) {
+				var suite = {
+					id: (parent ? parent.id : '') + node.getAttribute('name'),
+					name: node.getAttribute('name'),
+					timeElapsed: parseFloat(node.getAttribute('time')) * 1000,
+					numTests: parseInt(node.getAttribute('tests')),
+					numSkippedTests: parseInt(node.getAttribute('skipped')),
+					numFailedTests: parseInt(node.getAttribute('failures'))
+				};
+				var tests = convertSuiteChildNodes(children(node), node);
+				suite.tests = tests;
+				return suite;
+			}
+			// Safe way of getting child elements for >=IE9 etc.
+			function children(node, tagName) {
+				var nodes = node.childNodes;
+				var children = [];
+				for (var i = 0; i < nodes.length; i++) {
+					var child = nodes[i];
+					var isElement = Node.ELEMENT_NODE === child.nodeType;
+					if (isElement && (!tagName || child.tagName.toLowerCase() === tagName.toLowerCase())) {
+						children.push(child);
+					}
+				}
+				return children;
+			}
+			function processReportXml(doc) {
+				console.log(doc);
+
+				var testSuitesElement = doc.documentElement;
+				console.log(testSuitesElement);
+
+				var testSuiteElements = children(testSuitesElement);
+
+				var rootSuite = {
+					id: '',
+					name: '',
+					tests: [],
+					timeElapsed: 0,
+					numTests: 0,
+					numFailedTests: 0,
+					numSkippedTests: 0
+				};
+
+				htmlReporter.run();
+				for (var i = 0; i < testSuiteElements.length; i++) {
+					var suite = convertSuiteNode(testSuiteElements[i]);
+					suite.parent = false;
+					console.log(suite);
+					rootSuite.tests.push(suite);
+					rootSuite.numTests += suite.numTests;
+					rootSuite.numFailedTests += suite.numFailedTests;
+					rootSuite.numSkippedTests += suite.numSkippedTests;
+					processSuite(suite);
+				}
+				//processSuite(rootSuite);
+				htmlReporter.runEnd && htmlReporter.runEnd();
+			}
+			function parseXml(str) {
+				var parser = new DOMParser();
+				return parser.parseFromString(str, "text/xml");
+			}
+
+			var htmlReporter = new HtmlReporter({ includeCss: false, hasTopLevelSuite: false });
+
+			var queryParams = ioQuery.queryToObject(window.location.search.substring(1));
+			request.get(queryParams.report || './report.xml')
+				.then(parseXml)
+				.then(processReportXml)
+				.then(null, function(err) {
+					console.error(err);
+				});
+		});
+		</script>
+	</head>
+	<body></body>
+</html>

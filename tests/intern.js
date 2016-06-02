@@ -13,9 +13,11 @@ define([
 
   config.reporters = [
     'Pretty',
+    //{ 'id': 'Console', 'useAbbreviatedEnvironment': 0 },
     'Lcov',
     'LcovHtml',
-    { 'id': 'JUnit', 'filename': 'report.xml' }
+    { 'id': 'JUnit', 'filename': 'report.xml' },
+    { 'id': 'tests/reporters/Html-using-report-xml', 'filename': 'Html-using-report-xml.html' }
   ];
 
   // Configuration options for the module loader; any AMD configuration options supported by the Dojo loader can be
