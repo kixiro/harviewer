@@ -44,7 +44,8 @@ define([
   config.suites = config.suites.concat([
     'tests/unit/core/lib',
     'tests/unit/core/cookies',
-    'tests/unit/core/StatsService'
+    'tests/unit/core/StatsService',
+    'tests/unit/core/RequestListService'
   ]);
 
   // A regular expression matching URLs to files that should not be included

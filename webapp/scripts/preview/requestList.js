@@ -3,6 +3,7 @@
 define("preview/requestList", [
     "domplate/domplate",
     "core/lib",
+    "core/RequestListService",
     "i18n!nls/requestList",
     "preview/harModel",
     "core/cookies",
@@ -11,7 +12,7 @@ define("preview/requestList", [
     "domplate/popupMenu"
 ],
 
-function(Domplate, Lib, Strings, HarModel, Cookies, RequestBody, InfoTip, Menu) {
+function(Domplate, Lib, RequestListService, Strings, HarModel, Cookies, RequestBody, InfoTip, Menu) {
 with (Domplate) {
 
 // ********************************************************************************************* //
@@ -852,43 +853,7 @@ RequestList.prototype = domplate(
 
     summarizePhase: function(phase)
     {
-        var cachedSize = 0, totalSize = 0;
-
-        var category = "all";
-        if (category == "all")
-            category = null;
-
-        var fileCount = 0;
-        var minTime = 0, maxTime = 0;
-
-        for (var i=0; i<phase.files.length; i++)
-        {
-            var file = phase.files[i];
-            var startedDateTime = Lib.parseISO8601(file.startedDateTime);
-
-            if (!category || file.category == category)
-            {
-                ++fileCount;
-
-                var bodySize = file.response.bodySize;
-                var size = (bodySize && bodySize != -1) ? bodySize : file.response.content.size;
-
-                totalSize += size;
-                if (file.response.status == 304)
-                    cachedSize += size;
-
-                if (!minTime || startedDateTime < minTime)
-                    minTime = startedDateTime;
-
-                var fileEndTime = startedDateTime + file.time;
-                if (fileEndTime > maxTime)
-                    maxTime = fileEndTime;
-            }
-        }
-
-        var totalTime = maxTime - minTime;
-        return {cachedSize: cachedSize, totalSize: totalSize, totalTime: totalTime,
-            fileCount: fileCount}
+        return RequestListService.summarizePhase(phase);
     },
 
     // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //

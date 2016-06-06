@@ -4,9 +4,10 @@
  * @module core/StatsService
  */
 define("core/StatsService", [
+    "./RequestListService"
 ],
 
-function() {
+function(RequestListService) {
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
 
@@ -226,8 +227,8 @@ StatsService.prototype = {
                 totals.partial.resBodySize += resBodySize;
                 totals.partial.count++;
             }
-            else if (entry.response.status == 304 || (resBodySize === 0 && response.content && response.content.size > 0)) { // From cache
-                var cachedSize = resBodySize || (response.content && response.content.size) || 0;
+            else if (RequestListService.isCachedEntry(entry)) { // From cache
+                var cachedSize = RequestListService.cachedEntrySize(entry);
                 totals.cached.resBodySize += cachedSize;
                 totals.cached.count++;
             }
