@@ -457,105 +457,61 @@ RequestList.prototype = domplate(
 
     updateLayout: function(table, page)
     {
+        function associateRequestsWithRows(requests, table) {
+            return requests.reduce(function(ctx, request, i) {
+                if (Lib.hasClass(ctx.row, "netInfoRow")) {
+                    ctx.row = ctx.row.nextSibling;
+                }
+
+                ctx.requestsAndRows.push({ request: request, row: ctx.row });
+                ctx.row.repObject = request;
+
+                ctx.row = ctx.row.nextSibling;
+
+                return ctx;
+            }, {
+                row: table.firstChild.firstChild.nextSibling,
+                requestsAndRows: []
+            }).requestsAndRows;
+        }
+
+        function breakLayout(phases, requestsAndRows) {
+            var phaseIdx = 0;
+            for (var i=0; i<requestsAndRows.length; i++)
+            {
+                var file = requestsAndRows[i].request;
+                var row = requestsAndRows[i].row;
+
+                // For CSS (visual separator between two phases). Except of the first file
+                // in the first phase.
+                var phase = phases[phaseIdx];
+                if (phase && phase.files[0] === file) {
+                    if (phaseIdx > 0) {
+                        row.setAttribute("breakLayout", (phase.files[0] == file) ? "true" : "false");
+                    }
+                    phaseIdx++;
+                }
+            }
+        }
+
         var requests = HarModel.getPageEntries(this.input, page);
-
-        this.table = table;
-        var tbody = this.table.firstChild;
-        var row = this.firstRow = tbody.firstChild.nextSibling;
-
-        this.phases = [];
+        var requestsAndRows = associateRequestsWithRows(requests, table);
 
         // The phase interval is customizable through a cookie.
         var phaseInterval = Cookies.getCookie("phaseInterval");
-        if (!phaseInterval)
-            phaseInterval = 4000;
+        var phases = this.phases = RequestListService.calcPhases(this.input, page, function(requestIdx) {
+            var row = requestsAndRows[requestIdx].row;
+            // If row has a breakLayout attribute already we can use it.
+            return (typeof row.breakLayout === "boolean") && row.breakLayout;
+        }, phaseInterval);
 
-        var phase = null;
+        this.table = table;
 
-        var pageStartedDateTime = page ? Lib.parseISO8601(page.startedDateTime) : null;
-
-        // The onLoad time stamp is used for proper initialization of the first phase. The first
-        // phase contains all requests till onLoad is fired (even if there are time gaps).
-        // Don't worry if it
-        var onLoadTime = (page && page.pageTimings) ? page.pageTimings["onLoad"] : -1;
-
-        // The timing could be NaN or -1. In such case keep the value otherwise
-        // make the time absolute.
-        if (onLoadTime > 0)
-            onLoadTime += pageStartedDateTime;
-
-        // Iterate over all requests and create phases.
-        for (var i=0; i<requests.length; i++)
-        {
-            var file = requests[i];
-
-            if (Lib.hasClass(row, "netInfoRow"))
-                row = row.nextSibling;
-
-            row.repObject = file;
-
-            // If the parent page doesn't exists get startedDateTime of the
-            // first request.
-            if (!pageStartedDateTime)
-                pageStartedDateTime = Lib.parseISO8601(file.startedDateTime);
-
-            var startedDateTime = Lib.parseISO8601(file.startedDateTime);
-            var phaseLastStartTime = phase ? Lib.parseISO8601(phase.getLastStartTime()) : 0;
-            var phaseEndTime = phase ? phase.endTime : 0;
-
-            // New phase is started if:
-            // 1) There is no phase yet.
-            // 2) There is a gap between this request and the last one.
-            // 3) The new request is not started during the page load.
-            var newPhase = false;
-            if (phaseInterval >= 0)
-            {
-                newPhase = (startedDateTime > onLoadTime) &&
-                    ((startedDateTime - phaseLastStartTime) >= phaseInterval) &&
-                    (startedDateTime + file.time >= phaseEndTime + phaseInterval);
-            }
-
-            // 4) The file can be also marked with breakLayout
-            if (typeof(row.breakLayout) == "boolean")
-            {
-                if (!phase || row.breakLayout)
-                    phase = this.startPhase(file);
-                else
-                    phase.addFile(file);
-            }
-            else
-            {
-                if (!phase || newPhase)
-                    phase = this.startPhase(file);
-                else
-                    phase.addFile(file);
-            }
-
-            // For CSS (visual separator between two phases). Except of the first file
-            // in the first phase.
-            if (this.phases[0] != phase)
-                row.setAttribute("breakLayout", (phase.files[0] == file) ? "true" : "false");
-
-            if (phase.startTime == undefined || phase.startTime > startedDateTime)
-                phase.startTime = startedDateTime;
-
-            // file.time represents total elapsed time of the request.
-            if (phase.endTime == undefined || phase.endTime < startedDateTime + file.time)
-                phase.endTime = startedDateTime + file.time;
-
-            row = row.nextSibling;
-        }
+        breakLayout(phases, requestsAndRows);
 
         this.updateTimeStamps(page);
         this.updateTimeline(page);
         this.updateSummaries(page);
-    },
-
-    startPhase: function(file)
-    {
-        var phase = new Phase(file);
-        this.phases.push(phase);
-        return phase;
     },
 
     calculateFileTimes: function(page, file, phase)
@@ -941,34 +897,6 @@ RequestList.prototype = domplate(
         this.pageTimings.push(timing);
     }
 });
-
-// ********************************************************************************************* //
-
-/**
- * @object This object represents a phase that joins related requests into groups (phases).
- */
-function Phase(file)
-{
-    this.files = [];
-    this.pageTimings = [];
-
-    this.addFile(file);
-};
-
-Phase.prototype =
-{
-    addFile: function(file)
-    {
-        this.files.push(file);
-        file.phase = this;
-    },
-
-    getLastStartTime: function()
-    {
-        // The last request start time.
-        return this.files[this.files.length - 1].startedDateTime;
-    }
-};
 
 //***********************************************************************************************//
 

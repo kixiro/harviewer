@@ -48,6 +48,33 @@ define([
             for (var k in expected) {
                 assert.deepEqual(summary[k], expected[k], k);
             }
+        },
+
+        'calcPhases - no page returns no phases': function() {
+            var input = issue61Har;
+            var page = null;
+            var phaseInterval = null;
+            var row = null;
+            var phases = RequestListService.calcPhases(input, page, phaseInterval, row);
+            assert.deepEqual(phases, []);
+        },
+
+        'calcPhases - issue61Har': function() {
+            var input = issue61Har;
+            var page = issue61Har.log.pages[0];
+            var shouldBreakLayout = null;
+            var phaseInterval = null;
+
+            var phases = RequestListService.calcPhases(input, page, shouldBreakLayout, phaseInterval);
+
+            var phase = new RequestListService.Phase(input.log.entries[0]);
+            phase.pageTimings = [];
+            phase.startTime =  1463423105667;
+            phase.endTime = 1463423105680.887;
+            var expected = [phase];
+
+            console.log(phases, expected);
+            assert.deepEqual(phases, expected);
         }
     };
 

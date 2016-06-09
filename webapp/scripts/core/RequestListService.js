@@ -4,10 +4,39 @@
  * @module core/RequestListService
  */
 define("core/RequestListService", [
-    "core/lib"
+    "core/lib",
+    "preview/harModel"
 ],
 
-function(Lib) {
+function(Lib, HarModel) {
+
+// ********************************************************************************************* //
+
+/**
+ * @object This object represents a phase that joins related requests into groups (phases).
+ */
+function Phase(file)
+{
+    this.files = [];
+    this.pageTimings = [];
+
+    this.addFile(file);
+};
+
+Phase.prototype =
+{
+    addFile: function(file)
+    {
+        this.files.push(file);
+        file.phase = this;
+    },
+
+    getLastStartTime: function()
+    {
+        // The last request start time.
+        return this.files[this.files.length - 1].startedDateTime;
+    }
+};
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
 
@@ -70,10 +99,96 @@ var RequestListService = {
             totalTime: totalTime,
             fileCount: fileCount
         };
+    },
+
+    calcPhases: function(input, page, shouldBreakLayout, phaseInterval) {
+        function startPhase(file)
+        {
+            var phase = new Phase(file);
+            phases.push(phase);
+            return phase;
+        }
+
+        var requests = HarModel.getPageEntries(input, page);
+
+        var phases = [];
+
+        if (!phaseInterval)
+            phaseInterval = 4000;
+
+        var phase = null;
+
+        var pageStartedDateTime = page ? Lib.parseISO8601(page.startedDateTime) : null;
+
+        // The onLoad time stamp is used for proper initialization of the first phase. The first
+        // phase contains all requests till onLoad is fired (even if there are time gaps).
+        // Don't worry if it
+        var onLoadTime = (page && page.pageTimings) ? page.pageTimings["onLoad"] : -1;
+
+        // The timing could be NaN or -1. In such case keep the value otherwise
+        // make the time absolute.
+        if (onLoadTime > 0) {
+            onLoadTime += pageStartedDateTime;
+        }
+
+        // Iterate over all requests and create phases.
+        for (var i=0; i<requests.length; i++)
+        {
+            var file = requests[i];
+
+            // If the parent page doesn't exists get startedDateTime of the
+            // first request.
+            if (!pageStartedDateTime)
+                pageStartedDateTime = Lib.parseISO8601(file.startedDateTime);
+
+            var startedDateTime = Lib.parseISO8601(file.startedDateTime);
+            var phaseLastStartTime = phase ? Lib.parseISO8601(phase.getLastStartTime()) : 0;
+            var phaseEndTime = phase ? phase.endTime : 0;
+
+            // New phase is started if:
+            // 1) There is no phase yet.
+            // 2) There is a gap between this request and the last one.
+            // 3) The new request is not started during the page load.
+            var newPhase = false;
+            if (phaseInterval >= 0)
+            {
+                newPhase = (startedDateTime > onLoadTime) &&
+                    ((startedDateTime - phaseLastStartTime) >= phaseInterval) &&
+                    (startedDateTime + file.time >= phaseEndTime + phaseInterval);
+            }
+
+            // 4) The file can be also marked with breakLayout
+            var breakLayout = (shouldBreakLayout && shouldBreakLayout(i)) || false;
+            if (breakLayout)
+            {
+                if (!phase || breakLayout)
+                    phase = startPhase(file);
+                else
+                    phase.addFile(file);
+            }
+            else
+            {
+                if (!phase || newPhase)
+                    phase = startPhase(file);
+                else
+                    phase.addFile(file);
+            }
+
+            if (phase.startTime == undefined || phase.startTime > startedDateTime)
+                phase.startTime = startedDateTime;
+
+            // file.time represents total elapsed time of the request.
+            if (phase.endTime == undefined || phase.endTime < startedDateTime + file.time)
+                phase.endTime = startedDateTime + file.time;
+        }
+
+        return phases;
     }
 };
 
 //*************************************************************************************************
+
+RequestListService.Phase = Phase;
 
 return RequestListService;
 
