@@ -343,7 +343,11 @@ ResponseTab.prototype = domplate(TabView.Tab.prototype,
         var pre = responseTextBox.firstChild;
         Lib.clearNode(pre);
 
-        var text = this.file.response.content.text;
+        var content = this.file.response.content;
+        var text = content.text;
+
+        // decode() will return decoded content if possible, else use text as-is.
+        text = RequestBody.decode(text, content.encoding);
 
         Lib.insertWrappedText(text, pre);
     }
