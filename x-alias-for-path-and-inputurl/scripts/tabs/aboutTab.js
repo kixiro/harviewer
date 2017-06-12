@@ -1,0 +1,3 @@
+/* See license.txt for terms of usage */
+
+define("tabs/aboutTab",["domplate/domplate","domplate/tabView","core/lib","i18n!nls/harViewer"],function(a,e,t,b){function i(){}var o=a.A,n=a.DIV,c=a.SPAN;return i.prototype={id:"About",label:b.aboutTabLabel,tabHeaderTag:o({"class":"$tab.id\\Tab tab",view:"$tab.id",_repObject:"$tab"},"$tab.label",c("&nbsp;"),c({"class":"version"},"$tab.tabView.version")),bodyTag:n({"class":"aboutBody"}),onUpdateBody:function(a,e){var b=this;e=this.bodyTag.replace({},e),require(["text!tabs/aboutTab.html"],function(i){i=i.replace("@VERSION@",a.version,"g"),i=i.replace("@HAR_SPEC_URL@",a.harSpecURL,"g"),e.innerHTML=i,$(".linkSchema").click(t.bind(b.onSchema,b))})},onSchema:function(){this.tabView.selectTabByName("Schema")}},i});

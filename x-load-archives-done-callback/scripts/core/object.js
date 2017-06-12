@@ -1,0 +1,3 @@
+/* See license.txt for terms of usage */
+
+define(["./array","./sniff"],function(n,r){var t={},e=Object.prototype.toString,i=/^\s*function(\s+[\w_$][\w\d_$]*)?\s*\(/;return t.isFunction=function(n){return n?"[object Function]"===e.call(n)||r.isIE&&"string"!=typeof n&&i.test(String(n)):!1},t.extend=function(n,r){var e={};return t.append(e,n),t.append(e,r),e},t.append=function(n,r){for(var t in r)n[t]=r[t];return n},t.bind=function(){var r=n.cloneArray(arguments),t=r.shift(),e=r.shift();return function(){return t.apply(e,n.arrayInsert(n.cloneArray(r),0,arguments))}},t.bindFixed=function(){var r=n.cloneArray(arguments),t=r.shift(),e=r.shift();return function(){return t.apply(e,r)}},t});
